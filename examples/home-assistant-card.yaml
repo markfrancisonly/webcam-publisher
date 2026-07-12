@@ -1,0 +1,94 @@
+# Webcam Publisher — Home Assistant dashboard examples
+# =============================================================================
+# Streams this browser's camera/mic over WHIP — to go2rtc (feeds Frigate and
+# Home Assistant) or any WHIP-capable server.
+#
+# Important: every option below is used only as a first-run default.
+# The card's real config lives in each browser's localStorage and is edited
+# from the card's own gear (settings) panel. The YAML options here are read
+# exactly once — the first time the card runs in a browser that has no saved
+# settings yet — to seed those defaults. After that, changing the YAML has NO
+# effect on a browser that already has saved settings; use the gear panel (or
+# Import) on that browser instead.
+#
+# Add webcam-publisher.js as a dashboard resource (module) before using it.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# (a) Bare minimum
+# -----------------------------------------------------------------------------
+# No options at all. The card boots with its built-in defaults (stream
+# "webcam", go2rtc "https://go2rtc-server:1984", a public STUN server,
+# disabled) and everything else is set per-browser from the gear panel.
+type: custom:webcam-publisher
+
+
+# -----------------------------------------------------------------------------
+# (b) With initial-default (first-run) options
+# -----------------------------------------------------------------------------
+# These are the ONLY options the card reads, and only to seed a fresh browser.
+# They map 1:1 to the gear-panel fields:
+#
+#   serverType   "go2rtc" (base URL + stream) or "whip" (endpoint)  (string)
+#   stream       Stream name (go2rtc ?dst=; labels the session)     (string)
+#   go2rtc       go2rtc base URL (used by server type "go2rtc")     (string)
+#   ice          ICE servers as a JSON string (STUN/TURN)           (string)
+#   enabled      Start streaming automatically on first run         (boolean)
+#   whipUrl      Full WHIP endpoint URL (used by server type        (string)
+#                "whip"; seeding it implies serverType: whip)
+#   bearerToken  Sent as "Authorization: Bearer …" on WHIP requests (string)
+#
+# Note: in Lovelace the ICE key is "ice"; in a SERVER TEMPLATE it is
+# "iceServers" (see examples/templates/). Both hold the same JSON.
+#
+# type: custom:webcam-publisher
+# stream: webcam
+# go2rtc: https://go2rtc-server:1984
+# ice: '[{"urls":"stun:stun.l.google.com:19302"}]'
+# enabled: false
+
+
+# -----------------------------------------------------------------------------
+# (b2) Example seeding a TURN server (still first-run defaults only)
+# -----------------------------------------------------------------------------
+# ICE is a JSON STRING. Quote it so YAML keeps it verbatim. Use your own TURN
+# credentials — the values below are placeholders, never commit real secrets.
+#
+# type: custom:webcam-publisher
+# stream: webcam
+# go2rtc: https://go2rtc-server:1984
+# enabled: true
+# ice: >-
+#   [{"urls":"stun:stun.l.google.com:19302"},
+#    {"urls":"turn:turn.example.com:3478","username":"USER","credential":"PASS"}]
+
+
+# -----------------------------------------------------------------------------
+# (b3) Publishing to a non-go2rtc WHIP server (still first-run defaults only)
+# -----------------------------------------------------------------------------
+# whipUrl is a FULL endpoint URL — any spec-compliant WHIP server works (the
+# URL below is MediaMTX-style). Seeding whipUrl implies serverType: whip. The
+# stream name still labels the session locally.
+# bearerToken is sent as "Authorization: Bearer …" on WHIP POST/DELETE if the
+# server requires auth. Placeholder value — never commit a real token.
+#
+# type: custom:webcam-publisher
+# stream: webcam
+# whipUrl: https://mediamtx-server:8889/webcam/whip
+# bearerToken: REPLACE_WITH_TOKEN
+# enabled: false
+
+
+# -----------------------------------------------------------------------------
+# (c) Where the everyday settings actually live
+# -----------------------------------------------------------------------------
+# Camera device, microphone device, mic on/off, enable/disable, and the
+# stream/URL/ICE/token fields are all edited from the card's gear panel and
+# saved PER BROWSER in localStorage. They are intentionally NOT Lovelace
+# options, because a shared dashboard is viewed by many browsers/kiosks that
+# each need their own device selection.
+#
+# To push stream/URL/ICE settings to a browser after first run, use the gear
+# panel's "Load template" button (server templates) or "Import" — not this
+# YAML.

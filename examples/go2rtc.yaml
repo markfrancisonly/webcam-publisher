@@ -1,0 +1,86 @@
+# =============================================================================
+# Standalone go2rtc dedicated to BROWSER -> WHIP INGEST
+# =============================================================================
+# The browser (via webcam-publisher) PUBLISHES a WebRTC stream by POSTing
+# an SDP offer to go2rtc. go2rtc is the WHIP INGEST — it accepts the publish and
+# feeds Frigate (the recommended receiver) and Home Assistant. The card can also
+# publish to any other WHIP server via its "WHIP endpoint URL" setting.
+#
+#
+#   POST https://go2rtc-server:1984/api/webrtc?dst=webcam
+#     Content-Type: application/sdp
+#     body:         <SDP offer>
+#   ->  201 Created
+#       Content-Type: application/sdp
+#       Location: webrtc?id=<session-id>
+#       body: <SDP answer>
+#
+# There is only ONE WebRTC HTTP route in go2rtc: /api/webrtc. It is
+# disambiguated purely by the query param:
+#   ?dst=NAME  -> WHIP publish/ingest   (browser  -> go2rtc)   <-- this file
+#   ?src=NAME  -> WHEP / SDP egress     (go2rtc   -> consumer)
+#   DELETE ?id=<id>  tears the session down.
+# =============================================================================
+
+streams:
+  # ---------------------------------------------------------------------------
+  # Receive-only ("empty") stream. An empty value (YAML null) means "no source
+  # URL" -- go2rtc treats it as a stream that consumers/producers attach to.
+  # This MUST be predeclared: ?dst= looks the stream up and returns 404 if it
+  # does not already exist. It never auto-creates the WHIP target.
+  # ---------------------------------------------------------------------------
+  webcam:
+
+  # ---------------------------------------------------------------------------
+  # Optional H264/AAC normalization.
+  # Browsers negotiate VP8/VP9/H264 video + Opus audio. RTSP transport and
+  # Frigate mp4 recording require H264 (+ AAC). This go2rtc holds the raw
+  # WebRTC producer, so transcode HERE. An ffmpeg: source can reference another
+  # local stream by name (webcam), so consumers can pull an H264 RTSP:
+  #   rtsp://<this-host>:8554/webcam_h264
+  # WebRTC-only consumers can play the raw webcam without transcoding.
+  # ---------------------------------------------------------------------------
+  webcam_h264: ffmpeg:webcam#video=h264#audio=aac
+
+api:
+  origin: "*"            # CORS: send Access-Control-Allow-Origin. Only "*" is supported.
+
+  # --- HTTPS: required so the browser can publish -----------------------------
+  # getUserMedia() needs a secure context and an HTTPS page can't POST to plain HTTP,
+  # so the browser must reach this API over HTTPS. SIMPLEST: let go2rtc terminate TLS
+  # itself on :1984 (matches the https://<host>:1984 the card uses). The browser must
+  # TRUST the cert — use a real / Let's Encrypt cert, or import your own CA onto the
+  # device. No reverse proxy needed.
+  tls_listen: ":1984"
+  tls_cert: "/config/cert.pem"   # <-- your TLS certificate (PEM)
+  tls_key:  "/config/key.pem"    # <-- your TLS private key (PEM)
+  #
+  # Plain HTTP instead — ONLY for a localhost test (localhost is already a secure
+  # context) or when a TLS reverse proxy sits in front (the more advanced path; see
+  # secure-reverse-proxy.md). Don't run HTTP and TLS on the same port.
+  # listen: ":1984"
+
+  # IMPORTANT: do NOT set username/password when the browser POSTs cross-origin.
+  # go2rtc's auth wraps CORS and does not bypass the OPTIONS preflight, so a
+  # credential-less preflight 401s before any CORS header is written and the publish
+  # fails. Enforce auth at the proxy or by the network instead.
+  # username: "user"
+  # password: "pass"
+
+webrtc:
+  listen: ":8555"        # DTLS/SRTP media, TCP + UDP. This is the ACTUAL media path
+                         # and MUST be directly reachable by the browser. A reverse
+                         # proxy in front of :1984 does NOT carry it (see secure-reverse-proxy.md).
+  candidates:
+    # Advertise the address(es) the browser should connect to for media.
+    - 203.0.113.10:8555  # placeholder PUBLIC IP (remote access; forward 8555 udp+tcp to this host)
+    - 10.0.0.10:8555     # placeholder LAN IP (kiosk / same-network access)
+    # - stun:8555        # alternatively, discover a dynamic public IP via STUN
+
+  # ice_servers are only needed when go2rtc ITSELF must traverse NAT
+  # (remote host / CGNAT). The browser side uses its own iceServers separately.
+  # ice_servers:
+  #   - urls: [ "stun:stun.l.google.com:19302" ]
+  #   - urls: [ "turn:turn.example.net:3478" ]
+  #     username: "user"
+  #     credential: "pass"

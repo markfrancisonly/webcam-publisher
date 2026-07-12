@@ -1,0 +1,76 @@
+name: Dev release (rolling main)
+
+# Publishes a PRE-RELEASE on every push to main that changes the card, so HACS
+# users who enable "Show beta versions" track the tip of main — while everyone
+# else stays on your tagged stable releases.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - webcam-publisher.js
+      - hacs.json
+      - .github/workflows/dev-release.yml
+
+permissions:
+  contents: write
+
+# Never let two pushes race on the release create/delete.
+concurrency:
+  group: dev-release
+  cancel-in-progress: true
+
+jobs:
+  dev-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Dev version = one patch above the latest STABLE release, with a
+      # -dev.<yyyyMMddHHmm> (UTC) suffix. That keeps it a valid, ever-increasing
+      # semver pre-release that HACS sees as newer than the last dev build AND
+      # newer than the current stable, while embedding a human-readable date.
+      # (A bare "dev-yyyyMMdd" tag would not parse as a version or sort above
+      # stable; date-only would collide on same-day pushes.)
+      - name: Compute dev version
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          latest="$(gh release list --exclude-pre-releases --exclude-drafts -L 1 \
+                      --json tagName -q '.[0].tagName' 2>/dev/null || true)"
+          if [ -n "${latest}" ]; then
+            base="${latest#v}"; base="${base%%-*}"
+            IFS=. read -r MA MI PA <<< "${base}"
+            base="${MA:-1}.${MI:-0}.$(( ${PA:-0} + 1 ))"
+          else
+            base="$(grep -oE 'VERSION *= *"[0-9]+\.[0-9]+\.[0-9]+"' webcam-publisher.js \
+                     | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+            base="${base:-1.0.0}"
+          fi
+          echo "version=${base}-dev.$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+
+      # Keep only one dev build around: drop any prior *-dev.* pre-releases
+      # (never touches stable tags or -rc/-beta pre-releases).
+      - name: Remove previous dev pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release list --json tagName,isPrerelease \
+            -q '.[] | select(.isPrerelease) | .tagName' \
+            | grep -- '-dev\.' \
+            | while read -r tag; do gh release delete "${tag}" --yes --cleanup-tag; done || true
+
+      - name: Publish dev pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          v="${{ steps.ver.outputs.version }}"
+          gh release create "${v}" webcam-publisher.js \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            --title "Dev build ${v} (latest main)" \
+            --notes $'Rolling build of the latest `main`.\n\nTo track it: in HACS open **Webcam Publisher**, enable **Show beta versions**, and download this build. Stable users stay on the latest tagged release.'

@@ -1,0 +1,6 @@
+{
+  "name": "Webcam Publisher",
+  "filename": "webcam-publisher.js",
+  "render_readme": false,
+  "homeassistant": "2024.1.0"
+}

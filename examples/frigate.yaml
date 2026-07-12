@@ -1,0 +1,49 @@
+# =============================================================================
+# Frigate config for a BROWSER-PUBLISHED (WHIP) camera — self-contained
+# =============================================================================
+# Frigate 0.12+ embeds go2rtc under the top-level `go2rtc:` key. Here Frigate's
+# OWN embedded go2rtc receives the browser WHIP push directly — no separate
+# go2rtc container needed.
+#
+# Publish from the browser (webcam-publisher) to Frigate's embedded go2rtc:
+#   POST https://frigate-server:1984/api/webrtc?dst=webcam
+#
+# Requires publishing the Frigate container's ports 1984 (signaling) AND 8555
+# (media, tcp+udp), api.origin "*", and NO api auth (the browser's
+# credential-less CORS preflight must pass).
+#
+# To restream from a SEPARATE ingest go2rtc instead, see frigate-external-go2rtc.yaml.
+# =============================================================================
+
+go2rtc:
+  streams:
+    webcam:                                   # empty = receive the browser WHIP (must be predeclared)
+    webcam_h264:                              # normalize VP8/VP9/H264 -> H264/AAC (RTSP + mp4 recording need H264)
+      - "ffmpeg:webcam#video=h264#audio=aac"
+  api:
+    origin: "*"          # so the browser's cross-origin POST passes the CORS preflight
+    # HTTPS so the browser can publish (getUserMedia needs a secure context). SIMPLEST:
+    # let Frigate's own go2rtc terminate TLS on :1984 with your cert — the browser must
+    # trust it. (Plain HTTP works for a localhost test; a reverse proxy is the advanced
+    # path — see secure-reverse-proxy.md.)
+    tls_listen: ":1984"
+    tls_cert: "/config/cert.pem"   # <-- your TLS certificate (PEM)
+    tls_key:  "/config/key.pem"    # <-- your TLS private key (PEM)
+  webrtc:
+    candidates:
+      - 10.0.0.20:8555   # Frigate host LAN IP (placeholder) advertised for WebRTC media
+
+cameras:
+  webcam:
+    ffmpeg:
+      inputs:
+        # Pull the H264-normalized restream from Frigate's own embedded go2rtc.
+        - path: rtsp://127.0.0.1:8554/webcam_h264
+          input_args: preset-rtsp-restream
+          roles:
+            - detect
+            - record
+    detect:
+      enabled: true      # person/object detection on the room the tablet's camera covers
+    record:
+      enabled: true      # keep continuous recording of the browser stream

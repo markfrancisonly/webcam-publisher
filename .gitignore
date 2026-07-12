@@ -1,0 +1,11 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*~
+*.swp
+.idea/
+.vscode/
+
+# Local, private server templates (device ids / real hostnames are per-kiosk).
+# The committed examples under examples/templates/ are sanitized placeholders.
+/webcam-publisher/
