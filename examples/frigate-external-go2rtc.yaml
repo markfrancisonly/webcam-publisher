@@ -1,0 +1,35 @@
+# =============================================================================
+# Frigate config for a BROWSER-PUBLISHED (WHIP) camera — external (standalone) go2rtc
+# =============================================================================
+# The browser (webcam-publisher) publishes to a SEPARATE, standalone go2rtc
+# (see examples/go2rtc.yaml), which already normalizes the stream to H264/AAC.
+# Frigate just pulls that over RTSP; its embedded go2rtc restreams it locally.
+#
+# This is the clean split when you already run a standalone go2rtc: the ingest
+# go2rtc holds the raw WebRTC producer, and Frigate only records and detects.
+#
+# For Frigate to receive the browser WHIP directly (no separate go2rtc), see
+# frigate.yaml.
+# =============================================================================
+
+go2rtc:
+  streams:
+    # Consume the already-normalized H264/AAC stream from the ingest go2rtc.
+    # Replace go2rtc-server with the ingest go2rtc host (its RTSP port 8554).
+    webcam:
+      - "rtsp://go2rtc-server:8554/webcam_h264"
+
+cameras:
+  webcam:
+    ffmpeg:
+      inputs:
+        # Pull from Frigate's embedded go2rtc restream of the ingest stream above.
+        - path: rtsp://127.0.0.1:8554/webcam
+          input_args: preset-rtsp-restream
+          roles:
+            - detect
+            - record
+    detect:
+      enabled: true      # person/object detection on the room the tablet's camera covers
+    record:
+      enabled: true      # keep continuous recording of the browser stream

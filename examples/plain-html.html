@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Webcam Publisher — standalone example</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 560px; padding: 0 1rem; }
+    webcam-publisher { display: block; margin: 1rem 0; }
+    code { background: #eee; padding: 0 .25em; border-radius: 4px; }
+  </style>
+
+  <!-- Load the element. Serve this page over HTTPS (or from http://localhost): browsers only allow
+       camera/mic capture on a secure origin. -->
+  <script type="module" src="../webcam-publisher.js"></script>
+</head>
+<body>
+  <h1>Webcam Publisher</h1>
+  <p>
+    Publishes this browser's camera and microphone to a WHIP server (go2rtc shown). Open the gear to
+    pick the camera/mic and turn it on. Settings are saved per browser in <code>localStorage</code>.
+  </p>
+
+  <!-- Option A — configure with attributes. These seed the FIRST run only; after that, edit in the
+       element's gear panel. Attributes: server-type, go2rtc, stream, whip-url, bearer-token, ice, enabled.
+       Points at a LOCAL go2rtc so it works out of the box with the quickstart (localhost needs no
+       TLS). For a real deployment use https://<your-go2rtc>:1984 — see quickstart.md / README. -->
+  <h2>go2rtc (base URL + stream)</h2>
+  <webcam-publisher
+    go2rtc="http://127.0.0.1:1984"
+    stream="webcam"
+    ice='[{"urls":"stun:stun.l.google.com:19302"}]'
+  ></webcam-publisher>
+
+  <!-- Option B — configure from JS. Set attributes BEFORE inserting the element (they are read once,
+       when it is added to the page). Here we point at a MediaMTX WHIP endpoint with a bearer token. -->
+  <h2>Any WHIP server (full endpoint URL)</h2>
+  <div id="mount"></div>
+  <script type="module">
+    const el = document.createElement("webcam-publisher");
+    el.setAttribute("whip-url", "https://mediamtx-server:8889/webcam/whip");
+    el.setAttribute("bearer-token", "REPLACE_WITH_TOKEN"); // omit if your server needs no auth
+    el.setAttribute("stream", "webcam");                     // still labels the session locally
+    // el.setAttribute("enabled", "");                     // start immediately + auto-resume on reload
+    document.getElementById("mount").appendChild(el);
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# =============================================================================
+# Surfacing the go2rtc browser stream as a Home Assistant camera entity
+# =============================================================================
+# The browser publishes to go2rtc (see examples/go2rtc.yaml). These options let
+# Home Assistant consume that stream as a normal camera. Replace
+# go2rtc-server:1984 with your ingest go2rtc host.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Option 1 (simplest): add the Generic Camera integration in the UI.
+# Go to Settings > Devices & services > Add Integration > Generic Camera.
+# Prefer the H264-normalized stream (webcam_h264) for RTSP compatibility.
+# -----------------------------------------------------------------------------
+# Name: Webcam
+# Stream Source URL: rtsp://go2rtc-server:8554/webcam_h264
+# Still Image URL: http://go2rtc-server:1984/api/frame.jpeg?src=webcam_h264
+
+# -----------------------------------------------------------------------------
+# Option 2 (low-latency / optional 2-way): AlexxIT/WebRTC custom card straight
+# to go2rtc, bypassing the recording pipeline. This is a Lovelace card, not a
+# camera entity -- add it to a dashboard:
+#
+#   type: custom:webrtc-camera
+#   url: "webrtc:http://go2rtc-server:1984/api/webrtc?src=webcam"
+#
+# It consumes the RAW browser stream (?src=webcam), so no transcoding is
+# needed for playback.
+# -----------------------------------------------------------------------------
+
+# Home Assistant manages its internal streaming components automatically. Use
+# Generic Camera to register a stream from an external go2rtc server.
