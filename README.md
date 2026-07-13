@@ -82,7 +82,7 @@ Load the module and drop in the element:
 ```html
 <script
   type="module" 
-  src="https://github.com/markfrancisonly/webcam-publisher/raw/refs/heads/main/webcam-publisher.js">
+  src="https://cdn.jsdelivr.net/gh/markfrancisonly/webcam-publisher@main/webcam-publisher.js">
 </script>
 
 <webcam-publisher
