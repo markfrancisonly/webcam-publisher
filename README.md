@@ -80,7 +80,10 @@ The exact WHIP handshake:
 Load the module and drop in the element:
 
 ```html
-<script type="module" src="webcam-publisher.js"></script>
+<script
+  type="module" 
+  src="https://github.com/markfrancisonly/webcam-publisher/raw/refs/heads/main/webcam-publisher.js">
+</script>
 
 <webcam-publisher
   go2rtc="https://go2rtc-server:1984"
